@@ -3,6 +3,8 @@ THISMAKEFILE := $(TOPDIR)/src/Makefile
 
 firstTarget: all
 
+$(if $(filter %src,$(PWD)),$(error "Should not run make from src"))
+
 # setup prefixes for cross-compability
 PREFIX := $(TOPDIR)/tools/arm-none-eabi-
 SUFFIX := .exe
