@@ -25,13 +25,17 @@ INCLUDES := -I$(TOPDIR)/src -I$(TOPDIR)/src/lib/inc/
 CFLAGS  := $(COMPILE_OPTS) $(INCLUDES)
 ASFLAGS := $(COMPILE_OPTS) -c
 
+LINKERSCRIPT := $(TOPDIR)/src/stm32.ld
 # LDFLAGS should be = and not :=, $@ should be evaluated at link time
-LDFLAGS = -Wl,--gc-sections,-Map=$@.map,-cref,-u,Reset_Handler $(INCLUDE_DIRS) $(LIBRARY_DIRS) -T $(TOPDIR)/src/stm32f103c8.ld #-T stm32.ld
+LDFLAGS = -Wl,--gc-sections,-Map=$@.map,-cref,-u,g_pfnVectors $(INCLUDE_DIRS)
+LDFLAGS += $(LIBRARY_DIRS) -T $(LINKERSCRIPT) -B$(TOPDIR)/src/lib -nostdlib
 LDFLAGS += -B $(TOPDIR)/tools -B $(TOPDIR)/lib
 
 ARFLAGS := cr
 
 OBJCPFLAGS := -O binary
+
+# Virtual paths
 
 vpath %.c  $(TOPDIR)/src
 vpath %.c  $(TOPDIR)/src/lib/src
@@ -39,7 +43,7 @@ vpath %.s  $(TOPDIR)/src/lib/src
 vpath %.ld $(TOPDIR)/src
 
 # Object definitions
-TARGET_OBJECTS := main.o
+TARGET_OBJECTS := main.o stm32f10x_it.o
 
 TARGET_NAME := channel-measure
 TARGET_ELF  := $(TARGET_NAME).elf
@@ -73,8 +77,8 @@ all: $(TARGET_BIN)
 %.o:%.s $(THISMAKEFILE)
 	$(AS) $(ASFLAGS) $<
 
-$(TARGET_ELF): $(TARGET_OBJECTS) $(THISMAKEFILE) $(LIBSTM32_OUT)
-	$(LD) $(LDFLAGS) $(TARGET_OBJECTS) --output $@
+$(TARGET_ELF): $(TARGET_OBJECTS) $(THISMAKEFILE) $(LIBSTM32_OUT) $(LINKERSCRIPT)
+	$(LD) $(LDFLAGS) $(TARGET_OBJECTS) $(LIBSTM32_OUT) --output $@
 
 %.bin: %.elf
 	$(OBJCP) $(OBJCPFLAGS) $< $@
