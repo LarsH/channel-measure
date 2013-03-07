@@ -1,10 +1,10 @@
-TOPLEVEL := ..
-THISMAKEFILE := $(TOPLEVEL)/src/Makefile
+TOPDIR := ..
+THISMAKEFILE := $(TOPDIR)/src/Makefile
 
 firstTarget: all
 
 # setup prefixes for cross-compability
-PREFIX := $(TOPLEVEL)/tools/arm-none-eabi-
+PREFIX := $(TOPDIR)/tools/arm-none-eabi-
 SUFFIX := .exe
 
 # Toolchain programs
@@ -16,25 +16,25 @@ OBJCP := $(PREFIX)objcopy$(SUFFIX)
 
 # Program flags
 COMPILE_OPTS := -mcpu=cortex-m3 -mthumb -Wall -g -O0 -MD
-COMPILE_OPTS += -B $(TOPLEVEL)/tools
+COMPILE_OPTS += -B $(TOPDIR)/tools
 
-INCLUDES := -I$(TOPLEVEL)/src -I$(TOPLEVEL)/src/lib/inc/
+INCLUDES := -I$(TOPDIR)/src -I$(TOPDIR)/src/lib/inc/
 
 CFLAGS  := $(COMPILE_OPTS) $(INCLUDES)
 ASFLAGS := $(COMPILE_OPTS) -c
 
 # LDFLAGS should be = and not :=, $@ should be evaluated at link time
-LDFLAGS = -Wl,--gc-sections,-Map=$@.map,-cref,-u,Reset_Handler $(INCLUDE_DIRS) $(LIBRARY_DIRS) -T $(TOPLEVEL)/src/stm32f103c8.ld #-T stm32.ld
-LDFLAGS += -B $(TOPLEVEL)/tools -B $(TOPLEVEL)/lib
+LDFLAGS = -Wl,--gc-sections,-Map=$@.map,-cref,-u,Reset_Handler $(INCLUDE_DIRS) $(LIBRARY_DIRS) -T $(TOPDIR)/src/stm32f103c8.ld #-T stm32.ld
+LDFLAGS += -B $(TOPDIR)/tools -B $(TOPDIR)/lib
 
 ARFLAGS := cr
 
 OBJCPFLAGS := -O binary
 
-vpath %.c  $(TOPLEVEL)/src
-vpath %.c  $(TOPLEVEL)/src/lib/src
-vpath %.s  $(TOPLEVEL)/src/lib/src
-vpath %.ld $(TOPLEVEL)/src
+vpath %.c  $(TOPDIR)/src
+vpath %.c  $(TOPDIR)/src/lib/src
+vpath %.s  $(TOPDIR)/src/lib/src
+vpath %.ld $(TOPDIR)/src
 
 # Object definitions
 TARGET_OBJECTS := main.o
@@ -42,6 +42,7 @@ TARGET_OBJECTS := main.o
 TARGET_NAME := channel-measure
 TARGET_ELF  := $(TARGET_NAME).elf
 TARGET_BIN  := $(TARGET_NAME).bin
+TARGET_MAP  := $(TARGET_ELF).map
 
 # libstm32.a
 LIBSTM32_OUT = libstm32.a
@@ -57,8 +58,8 @@ LIBSTM32_OBJS := stm32f10x_adc.o  stm32f10x_bkp.o \
 
 # Dependencies
 ALLOBJS := $(LIBSTM32_OBJS) $(TARGET_OBJECTS)
-
--include $(ALLOBJS:.o=.d)
+DEPS := $(ALLOBJS:.o=.d)
+-include $(DEPS)
 
 
 # Target definitions
@@ -88,5 +89,5 @@ flash: $(MAIN_OUT)
 
 .PHONY:clean
 clean:
-	@rm *.o $(LIBSTM32_OUT) $(MAIN_OUT_ELF) $(MAIN_OUT_BIN)
+	-@del $(TARGET_BIN) $(TARGET_ELF) $(ALLOBJS) $(DEPS) $(TARGET_MAP) $(LIBSTM32_OUT)
 

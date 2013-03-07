@@ -1,3 +1,2 @@
 @echo off
-mkdir out
-tools\make.exe -C out -f ../src/Makefile %1 %2 %3 %4 %5
+tools\make.exe -f Makefile %1 %2 %3 %4 %5
