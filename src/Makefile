@@ -29,7 +29,7 @@ LINKERSCRIPT := $(TOPDIR)/src/stm32.ld
 # LDFLAGS should be = and not :=, $@ should be evaluated at link time
 LDFLAGS = -Wl,--gc-sections,-Map=$@.map,-cref,-u,g_pfnVectors $(INCLUDE_DIRS)
 LDFLAGS += $(LIBRARY_DIRS) -T $(LINKERSCRIPT) -B$(TOPDIR)/src/lib -nostdlib
-LDFLAGS += -B $(TOPDIR)/tools -B $(TOPDIR)/lib
+LDFLAGS += -B $(TOPDIR)/tools -B $(TOPDIR)/lib -nodefaultlibs -nostartfiles
 
 ARFLAGS := cr
 
