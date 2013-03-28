@@ -3,6 +3,7 @@
 /* Private variables */
 GPIO_InitTypeDef GPIO_InitStructure;
 ErrorStatus HSEStartUpStatus;
+USART_InitTypeDef USART_InitStructure;
 
 /* Private function prototypes */
 void Delay(vu32 nCount);
@@ -15,25 +16,32 @@ void Delay(vu32 nCount)
 
 int main(void)
 {
-  /* Enable GPIOA clock */
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+  /* Enable GPIOA and USART1 clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_USART1, ENABLE);
 
-  /* Configure PA.9 as Output push-pull */
+  /* Configure USART1_Tx as alternate function push-pull */
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  /* Configure USART1_Rx as input floating */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  USART_StructInit(&USART_InitStructure);
+  /* Standard init is 9600 baud, 8 bit, no parity */
+  USART_Init(USART1, &USART_InitStructure);
+  USART_Cmd(USART1, ENABLE);
 
   while (1)
   {
-    /* Turn on led connected to PA.9 pin */
-    GPIO_SetBits(GPIOA, GPIO_Pin_9);
-    /* Insert delay */
-    Delay(0xAFFFF);
-
-    /* Turn off led connected to PA.9 pin */
-    GPIO_ResetBits(GPIOA, GPIO_Pin_9);
-    /* Insert delay */
-    Delay(0xAFFFF);
+     int i;
+     const char *text = "Hello world!\r\n";
+     for(i=0; i<14; i++) {
+        USART_SendData(USART1, text[i]);
+        while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == 0);
+     }
   }
 }
