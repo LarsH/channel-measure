@@ -4,7 +4,7 @@ void print(char *s) {
    /** Prints the null-terminated string s to UART1.
      Blocking IO
      UART1 must be initialized
-     */
+    */
    int i;
    for(i=0; s[i] != '\0'; i++) {
       USART_SendData(USART1, s[i]);
@@ -25,5 +25,21 @@ int getchar(char *storeLocation) {
    }
    else {
       return 0;
+   }
+}
+
+void printhex(int h) {
+   /* Prints the 32 bit integer h in hexadecimal on UART1
+      Blocking IO
+      UART1 must be initialized
+    */
+   int i;
+   char buf[2];
+   buf[1] = '\0';
+   const char const * digits = "0123456789abcdef";
+   for(i=0U; i<8U; i++) {
+      buf[0] = digits[0xf & (h>>28U)];
+      print(buf);
+      h <<= 4U;
    }
 }
