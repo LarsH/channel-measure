@@ -1,5 +1,6 @@
 #include "stm32f10x_lib.h"
 #include "hw.h"
+#include "uartio.h"
 
 /* Private variables */
 
@@ -14,14 +15,15 @@ void Delay(vu32 nCount)
 
 int main(void)
 {
+   char buf[2];
+   buf[1] = '\0';
    initHardware();
    while (1)
    {
-      int i;
-      const char *text = "Hello world!\r\n";
-      for(i=0; i<14; i++) {
-         USART_SendData(USART1, text[i]);
-         while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == 0);
-      }
+      while(getchar(buf) == 0)
+         ;
+      print("Got char: ");
+      print(buf);
+      print("\r\n");
    }
 }
