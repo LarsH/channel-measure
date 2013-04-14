@@ -43,7 +43,8 @@ vpath %.s  $(TOPDIR)/src/lib/src
 vpath %.ld $(TOPDIR)/src
 
 # Object definitions
-TARGET_OBJECTS := main.o stm32f10x_it.o
+# XXX New C-files are added here, as object files!
+TARGET_OBJECTS := main.o hw.o stm32f10x_it.o
 
 TARGET_NAME := channel-measure
 TARGET_ELF  := $(TARGET_NAME).elf
