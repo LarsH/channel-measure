@@ -23,6 +23,30 @@ void handleCommand(char c) {
          print("\n");
          break;
 
+         /* Disable RF-chain power */
+      case 'd':
+      case 'D':
+         setRFpowerState(0);
+         print("Power to RF-chain DISABLED.\r\n");
+         break;
+
+         /* Enable RF-chain power */
+      case 'e':
+      case 'E':
+         setRFpowerState(1);
+         print("Power to RF-chain ENABLED.\r\n");
+         break;
+
+         /* Set antenna switch */
+      case '1':
+         setAntennaSwitch(0);
+         print("Antenna switch now LOW.\r\n");
+         break;
+      case '2':
+         setAntennaSwitch(1);
+         print("Antenna switch now HIGH.\r\n");
+         break;
+
       case 'H':
       case 'h':
       case '?':
@@ -30,6 +54,9 @@ void handleCommand(char c) {
          print(
                "a    Measure power\r\n"
                "c    Measure power continously\r\n"
+               "d    Disable RF-chain power\r\n"
+               "e    Enable RF-chain power\r\n"
+               "1 2  Select power measurement antenna\r\n"
                "h    Show this message\r\n");
          break;
 
@@ -39,6 +66,7 @@ void handleCommand(char c) {
    }
 }
 
+__attribute__((noreturn))
 void commandLine(void) {
    char buf[4];
 

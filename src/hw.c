@@ -1,6 +1,10 @@
 #include "stm32f10x_lib.h"
 #include "uartio.h"
 
+/* Private Defines */
+#define RF_POWER_PIN       GPIO_Pin_2
+#define ANTENNA_SWITCH_PIN GPIO_Pin_7
+
 /* Private variables */
 GPIO_InitTypeDef GPIO_InitStructure;
 ErrorStatus HSEStartUpStatus;
@@ -58,8 +62,37 @@ void initHardware(void) {
    ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_7Cycles5);
    ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 
+   /* Configure RF-chain control pins */
+   GPIO_InitStructure.GPIO_Pin = RF_POWER_PIN | ANTENNA_SWITCH_PIN;
+   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+   GPIO_Init(GPIOA, &GPIO_InitStructure);
+
 }
 
 unsigned int getPower(void) {
    return ADC_GetConversionValue(ADC1);
 }
+
+void setRFpowerState(int p) {
+   /* Disables the power to the RF-chain if p is zero, enables the power
+      otherwise. */
+   if(p) {
+      GPIO_SetBits(GPIOA, RF_POWER_PIN);
+   }
+   else {
+      GPIO_ResetBits(GPIOA, RF_POWER_PIN);
+   }
+}
+
+void setAntennaSwitch(int t) {
+   /* Sets the antenna switch high if t is non-zero; sets it low otherwise */
+   if(t) {
+      GPIO_SetBits(GPIOA, ANTENNA_SWITCH_PIN);
+   }
+   else {
+      GPIO_ResetBits(GPIOA, ANTENNA_SWITCH_PIN);
+   }
+}
+
+
