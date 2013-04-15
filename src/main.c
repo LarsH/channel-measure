@@ -15,19 +15,10 @@ void Delay(vu32 nCount)
 
 int main(void)
 {
-   int i = 0;
-   char buf[2];
-   buf[1] = '\0';
    initHardware();
-   while (1)
+   for(;;)
    {
-      while(getchar(buf) == 0)
-         ;
-
-      printhex(i);
-      i = i+1;
-      print(" Got char: ");
-      print(buf);
-      print("\r\n");
+      printhex(getPower());
+      print("\r");
    }
 }
