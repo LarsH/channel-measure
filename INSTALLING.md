@@ -1,5 +1,6 @@
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+# Installation
 
+This document descibes how to build and install the software for the system.
 
 ## Compiling the software:
 
