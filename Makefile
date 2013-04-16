@@ -1,7 +1,7 @@
 $(MAKE) = tools/make.exe
 all: out/all flash.bat
 
-FLASHFILE := out/channel-measure.bin
+FLASHFILE := out/channel-measure.hex
 
 out:
 	@mkdir out
@@ -23,5 +23,5 @@ flash.bat:
 # Linuxtarget!
 .PHONY:
 pythonflash: $(FLASHFILE)
-	python tools/stm32loader.py -p /dev/ttyUSB0 -e -w out/channel-measure.bin
+	python tools/stm32loader.py -p /dev/ttyUSB0 -e -w $^
 

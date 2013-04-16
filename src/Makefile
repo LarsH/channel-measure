@@ -33,7 +33,7 @@ LDFLAGS += -B $(TOPDIR)/tools -B $(TOPDIR)/lib -nodefaultlibs -nostartfiles
 
 ARFLAGS := cr
 
-OBJCPFLAGS := -O binary
+OBJCPFLAGS := -O ihex
 
 # Virtual paths
 
@@ -48,7 +48,7 @@ TARGET_OBJECTS := main.o hw.o uartio.o stm32f10x_it.o
 
 TARGET_NAME := channel-measure
 TARGET_ELF  := $(TARGET_NAME).elf
-TARGET_BIN  := $(TARGET_NAME).bin
+TARGET_HEX  := $(TARGET_NAME).hex
 TARGET_MAP  := $(TARGET_ELF).map
 
 # libstm32.a
@@ -70,7 +70,7 @@ DEPS := $(ALLOBJS:.o=.d)
 
 
 # Target definitions
-all: $(TARGET_BIN)
+all: $(TARGET_HEX)
 
 %.o:%.c $(THISMAKEFILE)
 	$(CC) $(CFLAGS) -c $<
@@ -81,7 +81,7 @@ all: $(TARGET_BIN)
 $(TARGET_ELF): $(TARGET_OBJECTS) $(THISMAKEFILE) $(LIBSTM32_OUT) $(LINKERSCRIPT)
 	$(LD) $(LDFLAGS) $(TARGET_OBJECTS) $(LIBSTM32_OUT) --output $@
 
-%.bin: %.elf
+%.hex: %.elf
 	$(OBJCP) $(OBJCPFLAGS) $< $@
 
 $(LIBSTM32_OUT): $(LIBSTM32_OBJS)
@@ -96,5 +96,5 @@ flash: $(MAIN_OUT)
 
 .PHONY:clean
 clean:
-	-@del $(TARGET_BIN) $(TARGET_ELF) $(ALLOBJS) $(DEPS) $(TARGET_MAP) $(LIBSTM32_OUT)
+	-@del $(TARGET_HEX) $(TARGET_ELF) $(ALLOBJS) $(DEPS) $(TARGET_MAP) $(LIBSTM32_OUT)
 
