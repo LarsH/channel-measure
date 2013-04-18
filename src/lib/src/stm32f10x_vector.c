@@ -86,7 +86,7 @@ extern unsigned long _sbss;			/* start address for the .bss section. defined
 extern unsigned long _ebss;			/* end address for the .bss section. defined in
                                    linker script */
 
-extern void _estack;		/* init value for the stack pointer. defined in linker script */
+extern unsigned long _estack;		/* init value for the stack pointer. defined in linker script */
 
 
 
@@ -104,12 +104,17 @@ extern int main(void);
 *
 *******************************************************************************/
 
+typedef struct {
+   unsigned long *stackEnd;
+   void (* const ISRs[66])(void);
+} intVector;
 
 __attribute__ ((section(".isr_vector")))
-void (* const g_pfnVectors[])(void) =
+intVector g_pfnVectors =
 {
-  &_estack,            // The initial stack pointer
-  Reset_Handler,             // The reset handler
+  &_estack,            /* The initial stack pointer */
+ {
+  Reset_Handler,             /* The reset handler */
   NMIException,
   HardFaultException,
   MemManageException,
@@ -171,7 +176,8 @@ void (* const g_pfnVectors[])(void) =
   0,
   0,
   0,
-  (unsigned short)0xF108F85F //this is a workaround for boot in RAM mode.
+  (void(*const)(void))0xF108F85F /* this is a workaround for boot in RAM mode.*/
+ }
 };
 
 /*******************************************************************************
@@ -188,26 +194,26 @@ void Reset_Handler(void)
 {
     unsigned long *pulSrc, *pulDest;
 
-    //
-    // Copy the data segment initializers from flash to SRAM.
-    //
+    /*
+       Copy the data segment initializers from flash to SRAM.
+     */
     pulSrc = &_sidata;
     for(pulDest = &_sdata; pulDest < &_edata; )
     {
         *(pulDest++) = *(pulSrc++);
     }
 
-    //
-    // Zero fill the bss segment.
-    //
+    /*
+       Zero fill the bss segment.
+     */
     for(pulDest = &_sbss; pulDest < &_ebss; )
     {
         *(pulDest++) = 0;
     }
 
-    //
-    // Call the application's entry point.
-    //
+    /*
+       Call the application's entry point.
+     */
     main();
 }
 

@@ -50,7 +50,7 @@ void NMIException(void)
 void HardFaultException(void)
 {
   /* Go to infinite loop when Hard Fault exception occurs */
-  while (1)
+  for(;;)
   {
   }
 }
@@ -65,7 +65,7 @@ void HardFaultException(void)
 void MemManageException(void)
 {
   /* Go to infinite loop when Memory Manage exception occurs */
-  while (1)
+  for(;;)
   {
   }
 }
@@ -80,7 +80,7 @@ void MemManageException(void)
 void BusFaultException(void)
 {
   /* Go to infinite loop when Bus Fault exception occurs */
-  while (1)
+  for(;;) 
   {
   }
 }
@@ -95,7 +95,7 @@ void BusFaultException(void)
 void UsageFaultException(void)
 {
   /* Go to infinite loop when Usage Fault exception occurs */
-  while (1)
+  for(;;)
   {
   }
 }

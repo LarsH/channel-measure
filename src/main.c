@@ -2,7 +2,7 @@
 #include "hw.h"
 #include "uartio.h"
 
-void handleCommand(char c) {
+static void handleCommand(char c) {
 
    switch(c) {
       case 'a':
@@ -16,7 +16,7 @@ void handleCommand(char c) {
       case 'C':
          /* Continous ADC */
          print("Press any key to stop...\r\n");
-         while(getchar(&c) == 0) {
+         while(getuartchar(&c) == 0) {
             printhex(getPower());
             print("\r");
          }
@@ -67,7 +67,7 @@ void handleCommand(char c) {
 }
 
 __attribute__((noreturn))
-void commandLine(void) {
+static void commandLine(void) {
    char buf[4];
 
    /* Added for command echo on UART */
@@ -78,7 +78,7 @@ void commandLine(void) {
    /* Infinite command loop */
    for(;;) {
       print(">>> ");
-      while(getchar(&(buf[0])) == 0)
+      while(getuartchar(&(buf[0])) == 0)
          ;
 
       print(buf); /* Echo command */
@@ -87,7 +87,7 @@ void commandLine(void) {
    }
 }
 
-int main(void)
+void main(void)
 {
    initHardware();
    commandLine();
