@@ -15,9 +15,13 @@ LD := $(PREFIX)gcc$(SUFFIX)
 AS := $(PREFIX)gcc$(SUFFIX)
 AR = $(PREFIX)ar$(SUFFIX)
 OBJCP := $(PREFIX)objcopy$(SUFFIX)
+LINT := $(TOPDIR)/tools/splint.exe
 
 # Program flags
-COMPILE_OPTS := -mcpu=cortex-m3 -mthumb -Wall -g -O0 -MD
+LINTENV :=LARCH_PATH=$(TOPDIR)/tools/splintlib
+LINTFLAGS := -maintype -duplicatequals -I $(TOPDIR)/src/lib/inc/ -I $(TOPDIR)/src/
+
+COMPILE_OPTS := -mcpu=cortex-m3 -mthumb -Wall -Werror -Wno-main -pedantic -g -O0 -MD
 COMPILE_OPTS += -B $(TOPDIR)/tools
 
 INCLUDES := -I$(TOPDIR)/src -I$(TOPDIR)/src/lib/inc/
@@ -43,8 +47,9 @@ vpath %.s  $(TOPDIR)/src/lib/src
 vpath %.ld $(TOPDIR)/src
 
 # Object definitions
-# XXX New C-files are added here, as object files!
-TARGET_OBJECTS := main.o hw.o uartio.o stm32f10x_it.o
+# XXX New C-files are added here!
+TARGET_CFILES := main.c hw.c uartio.c stm32f10x_it.c
+TARGET_OBJECTS := $(TARGET_CFILES:.c=.o)
 
 TARGET_NAME := channel-measure
 TARGET_ELF  := $(TARGET_NAME).elf
@@ -78,7 +83,7 @@ all: $(TARGET_HEX)
 %.o:%.s $(THISMAKEFILE)
 	$(AS) $(ASFLAGS) $<
 
-$(TARGET_ELF): $(TARGET_OBJECTS) $(THISMAKEFILE) $(LIBSTM32_OUT) $(LINKERSCRIPT)
+$(TARGET_ELF): lint $(TARGET_OBJECTS) $(THISMAKEFILE) $(LIBSTM32_OUT) $(LINKERSCRIPT)
 	$(LD) $(LDFLAGS) $(TARGET_OBJECTS) $(LIBSTM32_OUT) --output $@
 
 %.hex: %.elf
@@ -86,6 +91,10 @@ $(TARGET_ELF): $(TARGET_OBJECTS) $(THISMAKEFILE) $(LIBSTM32_OUT) $(LINKERSCRIPT)
 
 $(LIBSTM32_OUT): $(LIBSTM32_OBJS)
 	$(AR) $(ARFLAGS) $@ $(LIBSTM32_OBJS)
+
+lint: $(TARGET_CFILES)
+	$(LINTENV) $(LINT) $(LINTFLAGS) $^
+	@echo > $@
 
 # flash
 .PHONY:flash
@@ -96,5 +105,5 @@ flash: $(MAIN_OUT)
 
 .PHONY:clean
 clean:
-	-@del $(TARGET_HEX) $(TARGET_ELF) $(ALLOBJS) $(DEPS) $(TARGET_MAP) $(LIBSTM32_OUT)
+	-@del $(TARGET_HEX) $(TARGET_ELF) $(ALLOBJS) $(DEPS) $(TARGET_MAP) $(LIBSTM32_OUT) lint
 
