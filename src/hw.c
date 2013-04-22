@@ -33,7 +33,7 @@ void initHardware(void) {
    USART_InitStructure.USART_BaudRate = 115200;
    USART_Init(USART1, &USART_InitStructure);
    USART_Cmd(USART1, ENABLE);
-   print("UART initialized\r\n");
+   print("UART initialized\n");
 
    /* Initialize ADC */
    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
@@ -52,11 +52,11 @@ void initHardware(void) {
       i++;
       /* Typically calibration is done after four checks */
       if(i>100) {
-         print("Warning: ADC calibration failed!\r\n");
+         print("Warning: ADC calibration failed!\n");
          break;
       }
    }
-   print("\r\nADC calibration done.\r\n");
+   print("\nADC calibration done.\n");
 
    /* uC pin 10, PA0, should have alternate function ADC12_IN0 */
    ADC_RegularChannelConfig(ADC1, ADC_Channel_0, (u8) 1, ADC_SampleTime_7Cycles5);

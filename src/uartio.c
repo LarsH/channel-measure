@@ -2,11 +2,16 @@
 
 void print(char *s) {
    /** Prints the null-terminated string s to UART1.
+     For every '\n' character, "\r\n" is printed
      Blocking IO
      UART1 must be initialized
     */
    int i;
    for(i=0; s[i] != '\0'; i++) {
+      if(s[i] == '\n') {
+         USART_SendData(USART1, (u16) '\r');
+         while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == 0);
+      }
       USART_SendData(USART1, (u16) s[i]);
       while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == 0);
    }
