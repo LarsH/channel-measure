@@ -5,8 +5,8 @@
  * v0.2 add support for SDHC
  */
 
-#include <stdio.h>
 #include "stm32f10x_lib.h"
+#include "uartio.h"
 
 /*
  * Code is split into 3 parts:
@@ -63,7 +63,7 @@ static void spi_init(void)
 static void spi_set_speed(enum sd_speed speed)
 {
 	SPI_InitTypeDef spi;
-	int prescaler = SPI_BaudRatePrescaler_128;
+	u16 prescaler = SPI_BaudRatePrescaler_128;
 
 	if (speed == SD_SPEED_400KHZ)
 		prescaler = SPI_BaudRatePrescaler_128;
@@ -93,10 +93,10 @@ static u8 spi_txrx(u8 data)
 {
 	/* RXNE always happens after TXE, so if this function is used
 	 * we don't need to check for TXE */
-	SPI_SD->DR = data;
-	while ((SPI_SD->SR & SPI_I2S_FLAG_RXNE) == 0)
+	SPI_SD->DR = (vu16) data;
+	while ((SPI_SD->SR & SPI_FLAG_RXNE) == 0)
 		;
-	return SPI_SD->DR;
+	return (u8) SPI_SD->DR;
 }
 
 
@@ -105,11 +105,11 @@ static u8 spi_txrx(u8 data)
 static u8 crc7_one(u8 t, u8 data)
 {
 	int i;
-	const u8 g = 0x89;
+	const u8 g = (u8) 0x89;
 
 	t ^= data;
 	for (i=0; i<8; i++) {
-		if (t & 0x80)
+		if ((t & 0x80) != (u8)0)
 			t ^= g;
 		t <<= 1;
 	}
@@ -119,7 +119,7 @@ static u8 crc7_one(u8 t, u8 data)
 u8 crc7(const u8 *p, int len)
 {
 	int j;
-	u8 crc = 0;
+	u8 crc = (u8) 0;
 	for (j=0; j<len; j++)
 		crc = crc7_one(crc, p[j]);
 
@@ -129,15 +129,15 @@ u8 crc7(const u8 *p, int len)
 /* http://www.eagleairaust.com.au/code/crc16.htm */
 static u16 crc16_ccitt(u16 crc, u8 ser_data)
 {
-	crc  = (u8)(crc >> 8) | (crc << 8);
+	crc  = (u16) ((u8)(crc >> 8) | (crc << 8));
 	crc ^= ser_data;
-	crc ^= (u8)(crc & 0xff) >> 4;
+	crc ^= (u16) ((u8)(crc & 0xff) >> 4);
 	crc ^= (crc << 8) << 4;
 	crc ^= ((crc & 0xff) << 4) << 1;
 
 	return crc;
 }
-u16 crc16(const u8 *p, int len)
+static u16 crc16(const u8 *p, int len)
 {
 	int i;
 	u16 crc = 0;
@@ -153,19 +153,19 @@ u16 crc16(const u8 *p, int len)
 
 static void sd_cmd(u8 cmd, u32 arg)
 {
-	u8 crc = 0;
-	spi_txrx(0x40 | cmd);
-	crc = crc7_one(crc, 0x40 | cmd);
-	spi_txrx(arg >> 24);
-	crc = crc7_one(crc, arg >> 24);
-	spi_txrx(arg >> 16);
-	crc = crc7_one(crc, arg >> 16);
-	spi_txrx(arg >> 8);
-	crc = crc7_one(crc, arg >> 8);
-	spi_txrx(arg);
-	crc = crc7_one(crc, arg);
-	//spi_txrx(0x95);	/* crc7, for cmd0 */
-	spi_txrx(crc | 0x1);	/* crc7, for cmd0 */
+	u8 crc = (u8) 0;
+	(void) spi_txrx((u8)0x40 | cmd);
+	crc = crc7_one(crc, (u8)(0x40 | cmd));
+	(void) spi_txrx((u8)(arg >> 24));
+	crc = crc7_one(crc, (u8)(arg >> 24));
+	(void) spi_txrx((u8)(arg >> 16));
+	crc = crc7_one(crc, (u8)(arg >> 16));
+	(void) spi_txrx((u8)(arg >> 8));
+	crc = crc7_one(crc, (u8)(arg >> 8));
+	(void) spi_txrx((u8)arg);
+	crc = crc7_one(crc, (u8)arg);
+	/*spi_txrx(0x95);*/	/* crc7, for cmd0 */
+	(void) spi_txrx(crc | 0x1);	/* crc7, for cmd0 */
 }
 
 static u8 sd_get_r1()
@@ -173,27 +173,27 @@ static u8 sd_get_r1()
 	int tries = 1000;
 	u8 r;
 
-	while (tries--) {
-		r = spi_txrx(0xff);
-		if ((r & 0x80) == 0)
+	while (tries-- != 0) {
+		r = spi_txrx((u8)0xff);
+		if ((r & 0x80) == (u8)0)
 			return r;
 	}
-	return 0xff;
+	return (u8) 0xff;
 }
 
 static u16 sd_get_r2()
 {
 	int tries = 1000;
-	u16 r;
+	u16 r = (u16) 0;
 
-	while (tries--) {
-		r = spi_txrx(0xff);
-		if ((r & 0x80) == 0)
+	while (tries-- != 0) {
+		r = (u16) spi_txrx((u8)0xff);
+		if ((r & 0x80) == (u16)0)
 			break;
 	}
 	if (tries < 0)
 		return 0xff;
-	r = r<<8 | spi_txrx(0xff);
+	r = r<<8 | spi_txrx((u8)0xff);
 
 	return r;
 }
@@ -201,20 +201,24 @@ static u16 sd_get_r2()
 /*
  * r1, then 32-bit reply... same format as r3
  */
-static u8 sd_get_r7(u32 *r7)
+static u8 sd_get_r7(/*@out@*/u32 *r7)
+   /*@modifies *r7@*/
 {
 	u32 r;
-	r = sd_get_r1();
-	if (r != 0x01)
-		return r;
+   u8 s;
+	s = sd_get_r1();
+	if (s != (u8) 0x01) {
+      *r7 = 0xffffffff; /* Don't let r7 be undefined */
+		return s;
+   }
 
-	r = spi_txrx(0xff) << 24;
-	r |= spi_txrx(0xff) << 16;
-	r |= spi_txrx(0xff) << 8;
-	r |= spi_txrx(0xff);
+	r = (u32) spi_txrx((u8)0xff) << 24;
+	r |= spi_txrx((u8)0xff) << 16;
+	r |= spi_txrx((u8)0xff) << 8;
+	r |= spi_txrx((u8)0xff);
 
 	*r7 = r;
-	return 0x01;
+	return (u8) 0x01;
 }
 #define sd_get_r3 sd_get_r7
 
@@ -230,11 +234,11 @@ static const char *r1_strings[7] = {
 
 static void print_r1(u8 r)
 {
-	int i;
-	printf("R1: %02x\n", r);
+	unsigned int i;
+	print("R1: ");printhex((unsigned int)r); print("\n");
 	for (i=0; i<7; i++)
-		if (r & (1<<i))
-			printf("  %s\n", r1_strings[i]);
+		if ((r & (1<<i)) != 0)
+			print(r1_strings[i]);
 }
 
 static const char *r2_strings[15] = {
@@ -257,11 +261,11 @@ static const char *r2_strings[15] = {
 
 static void print_r2(u16 r)
 {
-	int i;
-	printf("R2: %04x\n", r);
+	unsigned int i;
+	print("R2: ");printhex((unsigned int)r);print("\n");
 	for (i=0; i<15; i++)
-		if (r & (1<<i))
-			printf("  %s\n", r2_strings[i]);
+		if ((r & (1<<i)) != 0)
+			print(r2_strings[i]);
 }
 
 /* Nec (=Ncr? which is limited to [0,8]) dummy bytes before lowering CS,
@@ -270,221 +274,217 @@ static void sd_nec()
 {
 	int i;
 	for (i=0; i<8; i++)
-		spi_txrx(0xff);
+		(void)spi_txrx((u8)0xff);
 }
 
 
 static int sd_init(hwif *hw)
 {
-	int i;
+	unsigned int i;
 	int r;
 	u32 r7;
 	u32 r3;
 	int tries;
+	u32 hcs = 0;
 
 	hw->capabilities = 0;
 
 	/* start with 100-400 kHz clock */
 	spi_set_speed(SD_SPEED_400KHZ);
 
-	printf("cmd0 - reset.. ");
+	print("cmd0 - reset.. ");
 	spi_cs_high();
 	/* 74+ clocks with CS high */
 	for (i=0; i<10; i++)
-		spi_txrx(0xff);
+		(void)spi_txrx((u8)0xff);
 
 	/* reset */
 	spi_cs_low();
-	sd_cmd(0, 0);
-	r = sd_get_r1();
+	sd_cmd((u8)0, 0);
+	r = (int) sd_get_r1();
 	sd_nec();
 	spi_cs_high();
 	if (r == 0xff)
 		goto err_spi;
 	if (r != 0x01) {
-		printf("fail\n");
-		print_r1(r);
+		print("fail\n");
+		print_r1((u8)r);
 		goto err;
 	}
-	printf("success\n");
+	print("success\n");
 
 
-	printf("cmd8 - voltage.. ");
+	print("cmd8 - voltage.. ");
 	/* ask about voltage supply */
 	spi_cs_low();
-	sd_cmd(8, 0x1aa /* VHS = 1 */);
-	r = sd_get_r7(&r7);
+	sd_cmd((u8)8, 0x1aa /* VHS = 1 */);
+	r = (int) sd_get_r7(&r7);
 	sd_nec();
 	spi_cs_high();
 	hw->capabilities |= CAP_VER2_00;
 	if (r == 0xff)
 		goto err_spi;
 	if (r == 0x01)
-		printf("success, SD v2.x\n");
-	else if (r & 0x4) {
+		print("success, SD v2.x\n");
+	else if ((r & 0x4) != 0) {
 		hw->capabilities &= ~CAP_VER2_00;
-		printf("not implemented, SD v1.x\n");
+		print("not implemented, SD v1.x\n");
 	} else {
-		printf("fail\n");
-		print_r1(r);
+		print("fail\n");
+		print_r1((u8)r);
 		return -2;
 	}
 
 
-	printf("cmd58 - ocr.. ");
+	print("cmd58 - ocr.. ");
 	/* ask about voltage supply */
 	spi_cs_low();
-	sd_cmd(58, 0);
-	r = sd_get_r3(&r3);
+	sd_cmd((u8)58, 0);
+	r = (int) sd_get_r3(&r3);
 	sd_nec();
 	spi_cs_high();
 	if (r == 0xff)
 		goto err_spi;
-	if (r != 0x01 && !(r & 0x4)) { /* allow it to not be implemented - old cards */
-		printf("fail\n");
-		print_r1(r);
+	if (r != 0x01 && ((r & 0x4) == 0)) { /* allow it to not be implemented - old cards */
+		print("fail\n");
+		print_r1((u8)r);
 		return -2;
 	}
 	else {
-		int i;
 		for (i=4; i<=23; i++)
-			if (r3 & 1<<i)
+			if ((r3 & 1<<i) != 0)
 				break;
-		printf("Vdd voltage window: %i.%i-", (12+i)/10, (12+i)%10);
+		print("Vdd voltage window: ");printhex((unsigned int)12+i);
 		for (i=23; i>=4; i--)
-			if (r3 & 1<<i)
+			if ((r3 & 1<<i) != 0)
 				break;
 		/* CCS shouldn't be valid here yet */
-		printf("%i.%iV, CCS:%li, power up status:%li\n",
-				(13+i)/10, (13+i)%10,
-				r3>>30 & 1, r3>>31);
-		printf("success\n");
+      printhex((unsigned int)13+i);print("deciVolt, CCS:");
+      printhex((unsigned int)(r3>>30)&1); print(" power up status: ");printhex((unsigned int)r3>>31);
+		print("\nsuccess\n");
 	}
 
 
-	printf("acmd41 - hcs.. ");
+	print("acmd41 - hcs.. ");
 	tries = 1000;
-	u32 hcs = 0;
 	/* say we support SDHC */
-	if (hw->capabilities & CAP_VER2_00)
-		hcs = 1<<30;
+	if ((hw->capabilities & CAP_VER2_00) != 0)
+		hcs = (u32)(1<<30);
 
 	/* needs to be polled until in_idle_state becomes 0 */
 	do {
 		/* send we don't support SDHC */
 		spi_cs_low();
 		/* next cmd is ACMD */
-		sd_cmd(55, 0);
-		r = sd_get_r1();
+		sd_cmd((u8)55, 0);
+		r = (int) sd_get_r1();
 		sd_nec();
 		spi_cs_high();
 		if (r == 0xff)
 			goto err_spi;
 		/* well... it's probably not idle here, but specs aren't clear */
-		if (r & 0xfe) {
-			printf("fail\n");
-			print_r1(r);
+		if ((r & 0xfe) != 0) {
+			print("fail\n");
+			print_r1((u8)r);
 			goto err;
 		}
 
 		spi_cs_low();
-		sd_cmd(41, hcs);
-		r = sd_get_r1();
+		sd_cmd((u8)41, hcs);
+		r = (int) sd_get_r1();
 		sd_nec();
 		spi_cs_high();
 		if (r == 0xff)
 			goto err_spi;
-		if (r & 0xfe) {
-			printf("fail\n");
-			print_r1(r);
+		if ((r & 0xfe) != 0) {
+			print("fail\n");
+			print_r1((u8)r);
 			goto err;
 		}
-	} while (r != 0 && tries--);
+	} while (r != 0 && tries-- != 0);
 	if (tries == -1) {
-		printf("timeouted\n");
+		print("timeouted\n");
 		goto err;
 	}
-	printf("success\n");
+	print("success\n");
 
 	/* Seems after this card is initialized which means bit 0 of R1
 	 * will be cleared. Not too sure. */
 
 
-	if (hw->capabilities & CAP_VER2_00) {
-		printf("cmd58 - ocr, 2nd time.. ");
+	if ((hw->capabilities & CAP_VER2_00) != 0) {
+		print("cmd58 - ocr, 2nd time.. ");
 		/* ask about voltage supply */
 		spi_cs_low();
-		sd_cmd(58, 0);
-		r = sd_get_r3(&r3);
+		sd_cmd((u8)58, 0);
+		r = (int) sd_get_r3(&r3);
 		sd_nec();
 		spi_cs_high();
 		if (r == 0xff)
 			goto err_spi;
-		if (r & 0xfe) {
-			printf("fail\n");
-			print_r1(r);
+		if ((r & 0xfe) != 0) {
+			print("fail\n");
+			print_r1((u8)r);
 			return -2;
 		}
 		else {
 #if 1
-			int i;
 			for (i=4; i<=23; i++)
-				if (r3 & 1<<i)
+				if ((r3 & 1<<i) != 0)
 					break;
-			printf("Vdd voltage window: %i.%i-", (12+i)/10, (12+i)%10);
+			print("Vdd voltage window: ");printhex((unsigned int)12+i);
 			for (i=23; i>=4; i--)
-				if (r3 & 1<<i)
+				if ((r3 & 1<<i) != 0)
 					break;
 			/* CCS shouldn't be valid here yet */
-			printf("%i.%iV, CCS:%li, power up status:%li\n",
-					(13+i)/10, (13+i)%10,
-					r3>>30 & 1, r3>>31);
-			// XXX power up status should be 1 here, since we're finished initializing, but it's not. WHY?
-			// that means CCS is invalid, so we'll set CAP_SDHC later
+         printhex((unsigned int)13+i);print("deciVolt, CCS:");
+         printhex((unsigned int)(r3>>30)&1); print(" power up status: ");printhex((unsigned int)r3>>31);
+			/* XXX power up status should be 1 here, since we're finished initializing, but it's not. WHY?
+			that means CCS is invalid, so we'll set CAP_SDHC later */
 #endif
-			if (r3>>30 & 1) {
+			if ((r3>>30 & 1) != 0) {
 				hw->capabilities |= CAP_SDHC;
 			}
 
-			printf("success\n");
+			print("success\n");
 		}
 	}
 
 
 	/* with SDHC block length is fixed to 1024 */
 	if ((hw->capabilities & CAP_SDHC) == 0) {
-		printf("cmd16 - block length.. ");
+		print("cmd16 - block length.. ");
 		spi_cs_low();
-		sd_cmd(16, 512);
-		r = sd_get_r1();
+		sd_cmd((u8)16, 512);
+		r = (int) sd_get_r1();
 		sd_nec();
 		spi_cs_high();
 		if (r == 0xff)
 			goto err_spi;
-		if (r & 0xfe) {
-			printf("fail\n");
-			print_r1(r);
+		if ((r & 0xfe) != 0) {
+			print("fail\n");
+			print_r1((u8)r);
 			goto err;
 		}
-		printf("success\n");
+		print("success\n");
 	}
 
 
-	printf("cmd59 - enable crc.. ");
+	print("cmd59 - enable crc.. ");
 	/* crc on */
 	spi_cs_low();
-	sd_cmd(59, 0);
-	r = sd_get_r1();
+	sd_cmd((u8)59, 0);
+	r = (int) sd_get_r1();
 	sd_nec();
 	spi_cs_high();
 	if (r == 0xff)
 		goto err_spi;
-	if (r & 0xfe) {
-		printf("fail\n");
-		print_r1(r);
+	if ((r & 0xfe) != 0) {
+		print("fail\n");
+		print_r1((u8) r);
 		goto err;
 	}
-	printf("success\n");
+	print("success\n");
 
 
 	/* now we can up the clock to <= 25 MHz */
@@ -493,31 +493,32 @@ static int sd_init(hwif *hw)
 	return 0;
 
  err_spi:
-	printf("fail spi\n");
+	print("fail spi\n");
 	return -1;
  err:
 	return -2;
 }
 
-static int sd_read_status(hwif *hw)
+static int sd_read_status(/*@unused@*/ hwif *hw)
 {
 	u16 r2;
 
 	spi_cs_low();
-	sd_cmd(13, 0);
+	sd_cmd((u8)13, 0);
 	r2 = sd_get_r2();
 	sd_nec();
 	spi_cs_high();
-	if (r2 & 0x8000)
+	if ((r2 & 0x8000) != 0)
 		return -1;
-	if (r2)
+	if (r2 != 0)
 		print_r2(r2);
 
 	return 0;
 }
 
+/*@-compdef -mustdefine@*/
 /* 0xfe marks data start, then len bytes of data and crc16 */
-static int sd_get_data(hwif *hw, u8 *buf, int len)
+static int sd_get_data(/*@unused@*/hwif *hw, /*@out@*/u8 *buf, int len)
 {
 	int tries = 20000;
 	u8 r;
@@ -525,51 +526,59 @@ static int sd_get_data(hwif *hw, u8 *buf, int len)
 	u16 calc_crc;
 	int i;
 
-	while (tries--) {
-		r = spi_txrx(0xff);
-		if (r == 0xfe)
+	while (tries-- != 0) {
+		r = spi_txrx((u8)0xff);
+		if (r == (u8) 0xfe)
 			break;
 	}
-	if (tries < 0)
+	if (tries < 0) {
 		return -1;
+   }
 
 	for (i=0; i<len; i++)
-		buf[i] = spi_txrx(0xff);
+		buf[i] = spi_txrx((u8)0xff);
 
-	_crc16 = spi_txrx(0xff) << 8;
-	_crc16 |= spi_txrx(0xff);
+	_crc16 = (u16) spi_txrx((u8)0xff) << 8;
+	_crc16 |= spi_txrx((u8)0xff);
 
 	calc_crc = crc16(buf, len);
 	if (_crc16 != calc_crc) {
-		printf("%s, crcs differ: %04x vs. %04x, len:%i\n", __func__, _crc16, calc_crc, len);
+      print(__func__);print(", crcs differ: ");printhex((unsigned int)_crc16);printhex((unsigned int)calc_crc);
+      print("len: "); printhex((unsigned int)len);print("\n");
 		return -1;
 	}
 
 	return 0;
 }
+/*@=compdef =mustdefine@*/
 
-static int sd_put_data(hwif *hw, const u8 *buf, int len)
+static int sd_put_data(/*@unused@*/hwif *hw, const u8 *buf, int len)
 {
-	u8 r;
+	u8 r = (u8) 0;
 	int tries = 10;
+#if 0
 	u8 b[16];
 	int bi = 0;
+#endif
 	u16 crc;
 
-	spi_txrx(0xfe); /* data start */
+	(void) spi_txrx((u8)0xfe); /* data start */
 
-	while (len--)
-		spi_txrx(*buf++);
+	while (len-- != 0)
+		(void)spi_txrx(*buf++);
 
 	crc = crc16(buf, len);
 	/* crc16 */
-	spi_txrx(crc>>8);
-	spi_txrx(crc);
+	(void)spi_txrx((u8)(crc>>8));
+	(void)spi_txrx((u8)crc);
 
 	/* normally just one dummy read in between... specs don't say how many */
-	while (tries--) {
-		b[bi++] = r = spi_txrx(0xff);
-		if (r != 0xff)
+	while (tries-- != 0) {
+#if 0
+		b[bi++] =
+#endif
+      r = spi_txrx((u8)0xff);
+		if (r != (u8) 0xff)
 			break;
 	}
 	if (tries < 0)
@@ -577,37 +586,37 @@ static int sd_put_data(hwif *hw, const u8 *buf, int len)
 
 	/* poll busy, about 300 reads for 256 MB card */
 	tries = 100000;
-	while (tries--) {
-		if (spi_txrx(0xff) == 0xff)
+	while (tries-- != 0) {
+		if (spi_txrx((u8)0xff) == (u8)0xff)
 			break;
 	}
 	if (tries < 0)
 		return -2;
 
 	/* data accepted, WIN */
-	if ((r & 0x1f) == 0x05)
+	if ((r & 0x1f) == (u8)0x05)
 		return 0;
 
-	return r;
+	return (int) r;
 }
 
-static int sd_read_csd(hwif *hw)
+static int sd_read_csd(/*@unused@*/hwif *hw)
 {
 	u8 buf[16];
 	int r;
-	int capacity;
+	unsigned int capacity;
 
 	spi_cs_low();
-	sd_cmd(9, 0);
-	r = sd_get_r1();
+	sd_cmd((u8)9, 0);
+	r = (int) sd_get_r1();
 	if (r == 0xff) {
 		spi_cs_high();
 		return -1;
 	}
-	if (r & 0xfe) {
+	if ((r & 0xfe) != 0) {
 		spi_cs_high();
-		printf("%s ", __func__);
-		print_r1(r);
+		print(__func__);
+		print_r1((u8) r);
 		return -2;
 	}
 
@@ -615,12 +624,13 @@ static int sd_read_csd(hwif *hw)
 	sd_nec();
 	spi_cs_high();
 	if (r == -1) {
-		printf("failed to get csd\n");
+		print("failed to get csd\n");
 		return -3;
 	}
 
-	if ((buf[0] >> 6) + 1 == 1) {
+	if ((buf[0] >> 6) + (u8)1 == (u8)1) {
 	/* CSD v1 */
+#if 0
 	printf("CSD: CSD v%i taac:%02x, nsac:%i, tran:%02x, classes:%02x%x, read_bl_len:%i, "
 		"read_bl_part:%i, write_blk_misalign:%i, read_blk_misalign:%i, dsr_imp:%i, "
 		"c_size:%i, vdd_rmin:%i, vdd_rmax:%i, vdd_wmin:%i, vdd_wmax:%i, "
@@ -642,15 +652,15 @@ static int sd_read_csd(hwif *hw)
 			(buf[13]>>5)&1,
 			buf[14]>>7, (buf[14]>>6)&1, (buf[14]>>5)&1, (buf[14]>>4)&1,
 			(buf[14]>>2)&3 /* file format */);
-
-	capacity = (((buf[6]&0x3)<<10 | buf[7]<<2 | buf[8]>>6)+1) << (2+(((buf[9]&3) << 1) | buf[10]>>7)) << ((buf[5] & 0xf) - 9);
+#endif
+	capacity = ((((unsigned int)buf[6]&0x3)<<10 | (unsigned int)buf[7]<<2 | (unsigned int)buf[8]>>6)+1U) << (2U+((((unsigned int)buf[9]&3) << 1) | (unsigned int)buf[10]>>7)) << (((unsigned int)buf[5] & 0xf) - 9U);
 	/* ^ = (c_size+1) * 2**(c_size_mult+2) * 2**(read_bl_len-9) */
 
 	} else {
 	/* CSD v2 */
 		/* this means the card is HC */
 		hw->capabilities |= CAP_SDHC;
-
+#if 0
 	printf("CSD: CSD v%i taac:%02x, nsac:%i, tran:%02x, classes:%02x%x, read_bl_len:%i, "
 		"read_bl_part:%i, write_blk_misalign:%i, read_blk_misalign:%i, dsr_imp:%i, "
 		"c_size:%i, erase_blk_en:%i, erase_s_size:%i, "
@@ -669,20 +679,20 @@ static int sd_read_csd(hwif *hw)
 			(buf[13]>>5)&1,
 			buf[14]>>7, (buf[14]>>6)&1, (buf[14]>>5)&1, (buf[14]>>4)&1,
 			(buf[14]>>2)&3 /* file format */);
-
-	capacity = buf[7]<<16 | buf[8]<<8 | buf[9]; /* in 512 kB */
+#endif
+	capacity = (unsigned int)(buf[7]<<16 | buf[8]<<8 | buf[9]); /* in 512 kB */
 	capacity *= 1024; /* in 512 B sectors */
 
 	}
 
-	printf("capacity = %i kB\n", capacity/2);
-	hw->sectors = capacity;
+	print("capacity = ");printhex(capacity/2);print("kB\n");
+	hw->sectors = (int) capacity;
 
 	/* if erase_blk_en = 0, then only this many sectors can be erased at once
 	 * this is NOT yet tested */
 	hw->erase_sectors = 1;
-	if (((buf[10]>>6)&1) == 0)
-		hw->erase_sectors = ((buf[10]&0x3f)<<1 | buf[11]>>7) + 1;
+	if (((buf[10]>>6)&1) == (u8)0)
+		hw->erase_sectors = (int) ((buf[10]&0x3f)<<1 | buf[11]>>7) + 1;
 
 	return 0;
 }
@@ -693,16 +703,16 @@ static int sd_read_cid(hwif *hw)
 	int r;
 
 	spi_cs_low();
-	sd_cmd(10, 0);
-	r = sd_get_r1();
+	sd_cmd((u8)10, 0);
+	r = (int) sd_get_r1();
 	if (r == 0xff) {
 		spi_cs_high();
 		return -1;
 	}
-	if (r & 0xfe) {
+	if ((r & 0xfe) != 0) {
 		spi_cs_high();
-		printf("%s ", __func__);
-		print_r1(r);
+		print(__func__);
+		print_r1((u8) r);
 		return -2;
 	}
 
@@ -710,16 +720,18 @@ static int sd_read_cid(hwif *hw)
 	sd_nec();
 	spi_cs_high();
 	if (r == -1) {
-		printf("failed to get cid\n");
+		print("failed to get cid\n");
 		return -3;
 	}
 
+#if 0
 	printf("CID: mid:%x, oid:%c%c, pnm:%c%c%c%c%c, prv:%i.%i, psn:%02x%02x%02x%02x, mdt:%i/%i\n",
 			buf[0], buf[1], buf[2],			/* mid, oid */
 			buf[3], buf[4], buf[5], buf[6], buf[7],	/* pnm */
 			buf[8] >> 4, buf[8] & 0xf,		/* prv */
 			buf[9], buf[10], buf[11], buf[12],	/* psn */
 			2000 + (buf[13]<<4 | buf[14]>>4), 1 + (buf[14] & 0xf));
+#endif
 
 	return 0;
 }
@@ -730,21 +742,21 @@ static int sd_readsector(hwif *hw, u32 address, u8 *buf)
 	int r;
 
 	spi_cs_low();
-	if (hw->capabilities & CAP_SDHC)
-		sd_cmd(17, address); /* read single block */
+	if ((hw->capabilities & CAP_SDHC) != 0)
+		sd_cmd((u8)17, address); /* read single block */
 	else
-		sd_cmd(17, address*512); /* read single block */
+		sd_cmd((u8)17, address*512); /* read single block */
 
-	r = sd_get_r1();
+	r = (int) sd_get_r1();
 	if (r == 0xff) {
 		spi_cs_high();
 		r = -1;
 		goto fail;
 	}
-	if (r & 0xfe) {
+	if ((r & 0xfe) != 0) {
 		spi_cs_high();
-		printf("%s\n", __func__);
-		print_r1(r);
+		print(__func__);print("\n");
+		print_r1((u8)r);
 		r = -2;
 		goto fail;
 	}
@@ -759,7 +771,8 @@ static int sd_readsector(hwif *hw, u32 address, u8 *buf)
 
 	return 0;
  fail:
-	printf("failed to read sector %li, err:%i\n", address, r);
+	print("failed to read sector ");printhex((unsigned int)address);
+   print("err: ");printhex((unsigned int)r);print("\n");
 	return r;
 }
 
@@ -768,31 +781,31 @@ static int sd_writesector(hwif *hw, u32 address, const u8 *buf)
 	int r;
 
 	spi_cs_low();
-	if (hw->capabilities & CAP_SDHC)
-		sd_cmd(24, address); /* write block */
+	if ((hw->capabilities & CAP_SDHC) != 0)
+		sd_cmd((u8)24, address); /* write block */
 	else
-		sd_cmd(24, address*512); /* write block */
+		sd_cmd((u8)24, address*512); /* write block */
 
-	r = sd_get_r1();
+	r = (int) sd_get_r1();
 	if (r == 0xff) {
 		spi_cs_high();
 		r = -1;
 		goto fail;
 	}
-	if (r & 0xfe) {
+	if ((r & 0xfe) != 0) {
 		spi_cs_high();
-		printf("%s\n", __func__);
-		print_r1(r);
+		print(__func__);print("\n");
+		print_r1((u8)r);
 		r = -2;
 		goto fail;
 	}
 
-	spi_txrx(0xff); /* Nwr (>= 1) high bytes */
+	(void)spi_txrx((u8)0xff); /* Nwr (>= 1) high bytes */
 	r = sd_put_data(hw, buf, 512);
 	sd_nec();
 	spi_cs_high();
 	if (r != 0) {
-		printf("sd_put_data returned: %i\n", r);
+		print("sd_put_data returned: ");printhex((unsigned int)r);print("\n");
 		r = -3;
 		goto fail;
 	}
@@ -802,7 +815,8 @@ static int sd_writesector(hwif *hw, u32 address, const u8 *buf)
 	 * and the return type is char, fucking efsl */
 	return 0;
  fail:
-	printf("failed to write sector %li, err:%i\n", address, r);
+	print("failed to write sector ");printhex((unsigned int)address);
+   print("err:");printhex((unsigned int)r);print("\n");
 	return r;
 }
 
@@ -813,12 +827,12 @@ int hwif_init(hwif* hw)
 {
 	int tries = 10;
 
-	if (hw->initialized)
+	if (hw->initialized != 0)
 		return 0;
 
 	spi_init();
 
-	while (tries--) {
+	while (tries-- != 0) {
 		if (sd_init(hw) == 0)
 			break;
 	}
@@ -826,9 +840,9 @@ int hwif_init(hwif* hw)
 		return -1;
 
 	/* read status register */
-	sd_read_status(hw);
+	(void) sd_read_status(hw);
 
-	sd_read_cid(hw);
+	(void) sd_read_cid(hw);
 	if (sd_read_csd(hw) != 0)
 		return -1;
 
@@ -843,17 +857,17 @@ int sd_read(hwif* hw, u32 address, u8 *buf)
 
 	r = sd_readsector(hw, address, buf);
 
-	while (r < 0 && tries--) {
+	while (r < 0 && (tries-- != 0)) {
 		if (sd_init(hw) != 0)
 			continue;
 
 		/* read status register */
-		sd_read_status(hw);
+		(void) sd_read_status(hw);
 
 		r = sd_readsector(hw, address, buf);
 	}
 	if (tries == -1)
-		printf("%s: couldn't read sector %li\n", __func__, address);
+		print(__func__);print(": couldn't read sector ");printhex((unsigned int)address);print("\n");
 
 	return r;
 }
@@ -865,109 +879,17 @@ int sd_write(hwif* hw, u32 address,const u8 *buf)
 
 	r = sd_writesector(hw, address, buf);
 
-	while (r < 0 && tries--) {
+	while (r < 0 && (tries-- != 0)) {
 		if (sd_init(hw) != 0)
 			continue;
 
 		/* read status register */
-		sd_read_status(hw);
+		(void) sd_read_status(hw);
 
 		r = sd_writesector(hw, address, buf);
 	}
 	if (tries == -1)
-		printf("%s: couldn't write sector %li\n", __func__, address);
+		print(__func__);print(": couldn't write sector ");printhex((unsigned int)address);print("\n");
 
 	return r;
-}
-
-
-
-/*** fatfs code that uses the public API ***/
-
-#include "diskio.h"
-
-hwif hw;
-
-DSTATUS disk_initialize(BYTE drv)
-{
-	if (hwif_init(&hw) == 0)
-		return 0;
-
-	return STA_NOINIT;
-}
-
-
-DSTATUS disk_status(BYTE drv)
-{
-	if (hw.initialized)
-		return 0;
-
-	return STA_NOINIT;
-}
-
-
-DRESULT disk_read(BYTE drv, BYTE *buff, DWORD sector, BYTE count)
-{
-	int i;
-
-	for (i=0; i<count; i++)
-		if (sd_read(&hw, sector+i, buff+512*i) != 0)
-			return RES_ERROR;
-
-	return RES_OK;
-}
-
-
-#if _READONLY == 0
-DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
-{
-	int i;
-
-	for (i=0; i<count; i++)
-		if (sd_write(&hw, sector+i, buff+512*i) != 0)
-			return RES_ERROR;
-
-	return RES_OK;
-}
-#endif /* _READONLY */
-
-
-
-DRESULT disk_ioctl(BYTE drv, BYTE ctrl, void *buff)
-{
-	switch (ctrl) {
-	case CTRL_SYNC:
-		return RES_OK;
-	case GET_SECTOR_SIZE:
-		*(WORD*)buff = 512;
-		return RES_OK;
-	case GET_SECTOR_COUNT:
-		*(DWORD*)buff = hw.sectors;
-		return RES_OK;
-	case GET_BLOCK_SIZE:
-		*(DWORD*)buff = hw.erase_sectors;
-		return RES_OK;
-	}
-	return RES_PARERR;
-}
-
-
-/*
- * FAT filestamp format:
- * [31:25] - year - 1980
- * [24:21] - month 1..12
- * [20:16] - day 1..31
- * [15:11] - hour 0..23
- * [10:5]  - minute 0..59
- * [4:0]   - second/2 0..29
- * so... midnight 2009 is 0x3a000000
- */
-DWORD get_fattime()
-{
-	int time = RTC_GetCounter();
-	int y, m, d;
-	epoch_days_to_date(time/DAY_SECONDS, &y, &m, &d);
-	time %= DAY_SECONDS;
-	return (y-1980)<<25 | m<<21 | d<<16 |
-		(time/3600)<<11 | (time/60%60)<<5 | (time/2%30);
 }

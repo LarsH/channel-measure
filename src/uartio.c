@@ -1,6 +1,6 @@
 #include "stm32f10x_lib.h"
 
-void print(char *s) {
+void print(const char *s) {
    /** Prints the null-terminated string s to UART1.
      For every '\n' character, "\r\n" is printed
      Blocking IO
