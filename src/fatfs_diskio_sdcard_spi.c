@@ -7,6 +7,7 @@
 
 #include "stm32f10x_lib.h"
 #include "uartio.h"
+#include "fatfs_diskio_sdcard_spi.h"
 
 /*
  * Code is split into 3 parts:
@@ -17,17 +18,6 @@
  *   interface to SD card code
  */
 
-struct hwif {
-	int initialized;
-	int sectors;
-	int erase_sectors;
-	int capabilities;
-};
-typedef struct hwif hwif;
-
-#define CAP_VER2_00	(1<<0)
-#define CAP_SDHC	(1<<1)
-
 
 enum sd_speed { SD_SPEED_INVALID, SD_SPEED_400KHZ, SD_SPEED_25MHZ };
 
@@ -36,29 +26,33 @@ enum sd_speed { SD_SPEED_INVALID, SD_SPEED_400KHZ, SD_SPEED_25MHZ };
 
 static void spi_set_speed(enum sd_speed speed);
 
-/* SD card is connected to SPI1, PA4-7 */
-#define SPI_SD SPI1
+/* SD card is connected to SPI2, PB12-15 */
+#define SPI_SD SPI2
 static void spi_init(void)
 {
 	GPIO_InitTypeDef gpio;
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
 
-	gpio.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7;
+	gpio.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
 	gpio.GPIO_Speed = GPIO_Speed_50MHz;
 	gpio.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_Init(GPIOA, &gpio);
+	GPIO_Init(GPIOB, &gpio);
 
-	gpio.GPIO_Pin = GPIO_Pin_4;
+   /* Set up CS-pin and power enable*/
+	gpio.GPIO_Pin = GPIO_Pin_12| GPIO_Pin_1;
 	gpio.GPIO_Speed = GPIO_Speed_50MHz;
 	gpio.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_Init(GPIOA, &gpio);
+	GPIO_Init(GPIOB, &gpio);
+
+   /* Enable SD-card power */
+   GPIO_SetBits(GPIOB, GPIO_Pin_1);
 
 	spi_set_speed(SD_SPEED_400KHZ);
 }
-#define spi_cs_low() do { GPIOA->BRR = GPIO_Pin_4; } while (0)
-#define spi_cs_high() do { GPIOA->BSRR = GPIO_Pin_4; } while (0)
+#define spi_cs_low() do { GPIOB->BRR = GPIO_Pin_12; } while (0)
+#define spi_cs_high() do { GPIOB->BSRR = GPIO_Pin_12; } while (0)
 
 static void spi_set_speed(enum sd_speed speed)
 {

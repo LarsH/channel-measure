@@ -1,6 +1,28 @@
 #include "stm32f10x_lib.h"
 #include "hw.h"
 #include "uartio.h"
+#include "fatfs_diskio_sdcard_spi.h"
+
+static u8 sdbuf[512];
+static void testSDcard(void) {
+   hwif hw = {0,0,0,0};
+   unsigned int i,j;
+
+   print("Initializing SD-card...\n");
+   i = (unsigned int) hwif_init(&hw);
+   print("hwif_init() returned: ");printhex(i);print("\nReading data...\n");
+   i = (unsigned int) sd_read(&hw, 0, sdbuf);
+   print("sd_read() returned: ");printhex(i);print("\nData read:\n");
+   for(i=0; i<512; i+=16) {
+      printhex(i);
+      for(j=0; j<4 ; j++) {
+         printhex(((unsigned int*)(&sdbuf[i]))[j]);
+         print(" ");
+      }
+      print("\n");
+   }
+   /*sd_write(&hw, ,const u8 *buf); */
+}
 
 static void handleCommand(char c) {
 
@@ -47,6 +69,11 @@ static void handleCommand(char c) {
          print("Antenna switch now HIGH.\n");
          break;
 
+      case 's':
+      case 'S':
+         testSDcard();
+         break;
+
       case 'H':
       case 'h':
       case '?':
@@ -57,6 +84,7 @@ static void handleCommand(char c) {
                "d    Disable RF-chain power\n"
                "e    Enable RF-chain power\n"
                "1 2  Select power measurement antenna\n"
+               "s    Test SD-card\n"
                "h    Show this message\n");
          break;
 
