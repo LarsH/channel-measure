@@ -35,10 +35,17 @@ static void spi_init(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
 
-	gpio.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
+	gpio.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_15;
 	gpio.GPIO_Speed = GPIO_Speed_50MHz;
 	gpio.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_Init(GPIOB, &gpio);
+
+   /* The MISO pin should be configured as input pin with pull up.
+      Alternate Function is used in SPI slave mode */
+   gpio.GPIO_Pin = GPIO_Pin_14;
+   gpio.GPIO_Speed = GPIO_Speed_50MHz;
+   gpio.GPIO_Mode = GPIO_Mode_IPU;
+   GPIO_Init(GPIOB, &gpio);
 
    /* Set up CS-pin and power enable*/
 	gpio.GPIO_Pin = GPIO_Pin_12| GPIO_Pin_1;
