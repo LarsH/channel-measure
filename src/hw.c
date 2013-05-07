@@ -65,7 +65,7 @@ void initHardware(void) {
    /* Configure RF-chain control pins */
    GPIO_InitStructure.GPIO_Pin = RF_POWER_PIN | ANTENNA_SWITCH_PIN;
    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
    GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 }
