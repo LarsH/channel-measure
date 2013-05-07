@@ -18,8 +18,7 @@ OBJCP := $(PREFIX)objcopy$(SUFFIX)
 LINT := $(TOPDIR)/tools/splint.exe
 
 # Program flags
-LINTENV :=LARCH_PATH=$(TOPDIR)/tools/splintlib
-LINTFLAGS := -maintype -duplicatequals -I $(TOPDIR)/src/lib/inc/ -I $(TOPDIR)/src/
+LINTFLAGS := -larchpath $(TOPDIR)/tools/splintlib -maintype -duplicatequals -I $(TOPDIR)/src/lib/inc/ -I $(TOPDIR)/src/
 
 COMPILE_OPTS := -mcpu=cortex-m3 -mthumb -Wall -Werror -Wno-main -pedantic -g -O0 -MD
 COMPILE_OPTS += -B $(TOPDIR)/tools
@@ -93,7 +92,7 @@ $(LIBSTM32_OUT): $(LIBSTM32_OBJS)
 	$(AR) $(ARFLAGS) $@ $(LIBSTM32_OBJS)
 
 lint: $(TARGET_CFILES)
-	$(LINTENV) $(LINT) $(LINTFLAGS) $^
+	$(LINT) $(LINTFLAGS) $^
 	@echo > $@
 
 # flash
